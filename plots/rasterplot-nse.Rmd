@@ -1,0 +1,79 @@
+---
+title: "NSE: 2D plots "
+output: html_notebook
+---
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(ggthemes)
+library(pasta)
+library(latex2exp)
+```
+
+```{r}
+data_path <- "./data/runs-intervalscore/"
+out_path <- "./outputs/"
+```
+
+```{r}
+filelist <- list.files(data_path, pattern = "*.csv$")
+below_metrics <- stringi::stri_extract_last_regex(filelist, "[0-9]\\..*") %>%
+  tools::file_path_sans_ext(.) %>%
+  as.double()
+
+local_file <- data_path %//% filelist[1]
+metric_below <- below_metrics[1]
+
+f_size = 9
+theme_set(theme_tufte())
+update_geom_defaults("text",
+                     list(colour = "grey20", family = theme_get()$text$family))
+```
+
+## Plot Interval Scores:
+```{r, fig.height=9, fig.width=10}
+for (idx in seq(1, length(filelist))) {
+  local_file <- data_path %//% filelist[idx]
+  metric_below <- below_metrics[idx]
+  
+  results_experiment <- readr::read_csv(local_file)
+  results_experiment <- dplyr::mutate(results_experiment,
+               nse_max = pmax(NSE_above, metric_below),
+               nse_min = pmin(NSE_above, metric_below),
+               interval_score = case_when(NSE_all < nse_min ~ NSE_all - nse_min,
+                                         NSE_all > nse_max ~ NSE_all - nse_max,
+                                         TRUE ~ 0.0))
+
+  rplt <- ggplot(results_experiment) +
+    geom_point(aes(x = w, y = NSE_above, color = interval_score),
+               size = 4.5,
+               shape = 15) +
+    labs(title = "Interval scores",
+         subtitle = TeX(paste('$NSE_{low}$ = ', format(round(metric_below ,2), nsmall = 2))),
+         x = "proportion of data below threshold (w)",
+         y = bquote(NSE[high])) +
+    scale_x_continuous(breaks = c(0.1,0.3,0.5,0.7,0.9),
+                       limits = c(0.1,0.9)) +
+    scale_y_continuous(breaks = c(0.1,0.3,0.5,0.7,0.9),
+                       limits = c(0.1,0.9)) +
+    scale_color_continuous(bquote(I[S]), type = "viridis") +
+    theme_tufte(base_size = 9) +
+    theme(panel.grid = element_line(colour = "grey90"),
+          legend.key.size = unit(0.5, "line"),
+          legend.position = "top",
+          legend.justification = "right",
+          legend.margin = margin(0,0,2,0),
+          legend.box.margin = margin(-20,9,-10,-10),
+          legend.spacing.y = unit(2.5, 'mm'),
+          legend.text = element_text(size = f_size-3, angle = 90))
+  
+  ggsave(out_path %//% "interval-plot" %-% format(round(metric_below, 2), nsmall=2) %.% "pdf",
+         plot = rplt,
+         dpi = 300,
+         height = 9.3,
+         width = 8.3,
+         unit = "cm",
+         bg = "white")
+}
+```
+

@@ -1,0 +1,71 @@
+---
+title: "Model Sizes"
+output: html_notebook
+---
+
+```{r}
+library(magrittr)
+library(tidyverse)
+library(ggthemes)
+library(ggrepel)
+library(ggtext)
+```
+
+Read data: 
+```{r}
+model_data <- readr::read_csv("./data/runs-sense.csv") %>%
+  dplyr::rename("global_id" = "...1",
+                "sense" = "sense (mean)")
+model_data$idx <- rep(1:447/447,9)
+
+lense_data <- readr::read_csv("./data/evaluation-lense.csv")
+real_nses <- lense_data %>%
+  filter(model == "lstm_ensemble",
+         period_start == "1989-10-1",
+         period_end == "1999-09-30") 
+```
+
+
+```{r}
+f_size = 9
+theme_set(theme_tufte())
+update_geom_defaults("text",
+                     list(colour = "grey20", family = theme_get()$text$family))
+
+ggplot() + 
+  stat_ecdf(data = model_data,
+            aes(x = sense, group=k_neighbors, color = as.factor(k_neighbors)),
+            geom = "step") +
+  stat_ecdf(data = real_nses,
+            aes(x = nse),
+            color = "black",
+            linewidth = 1) +
+  annotate(geom = "richtext",
+           x = 0.76,
+           y = 0.5,
+           label = "NSE",
+           angle = 90,
+           size = 1.8) +
+  scale_color_viridis_d('k', direction = -1) +
+  coord_cartesian(xlim = c(0.0, 1.0)) +
+  labs(title    = "SENSE and NSE",
+       subtitle = "LSTM ensemble for different number of neighbors (k)",
+       x        = "value",
+       y        = "NSE/SENSE") +
+  theme(panel.grid = element_line(colour = "grey90", size = 0.3),
+        text = element_text(size=f_size),
+        legend.position = c(0.405,0.496),
+        legend.margin = margin(0,0,0,0),
+        legend.direction = 'horizontal',
+        legend.box.margin = margin(-120,10,-10,-10),
+        legend.text = element_text(size = f_size-2),
+        legend.key.size = unit(0.65, "lines"),
+        legend.spacing.x = unit(0.08, 'cm'),
+        legend.spacing.y = unit(0.001, 'mm'))
+
+ggsave('./outputs/example-sense.pdf', height = 7, width = 8.3, units = "cm")
+```
+
+
+
+

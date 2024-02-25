@@ -1,0 +1,13 @@
+experiment_name: correlation-test
+path_nh_cfg: /path/to/reference/nh-config/file.yml
+path_nh_scaler: /path/to/model-run/dir
+path_out: /path/used/for/saving/
+cuda: 'cuda:0'            # use "cpu" if you have no gpu
+
+metricbelow: 0.5          # 0.5 is used in the paper
+basin_id: "01162500"      # make sure to enter a string here by using ""; "01162500" was used in the paper
+data_division: quantiles  # quantiles was used in the paper
+optim_criterion: NSE      # NSE was used in the paper 
+
+n_iter: 10000             # 10000 is used in the paper (probably less is also fine)
+     

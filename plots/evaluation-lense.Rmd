@@ -1,0 +1,202 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(ggthemes)
+library(patchwork)
+library(latex2exp)
+```
+
+Read data in: 
+```{r}
+lense_data <- readr::read_csv(".data/evaluation-lense.csv")
+```
+
+## Analysis 1
+```{r}
+model_of_interest <- 'lstm_ensemble'
+
+lense_data %>%
+  dplyr::filter(model == model_of_interest,
+                period_start == "1989-10-01",
+                period_end  == "1999-09-30") ->
+  data_summarized
+
+performance_plot <- ggplot() +
+  stat_ecdf(data = data_summarized,
+            aes(nse),
+            linetype = "dotted",
+            pad = FALSE) +
+  stat_ecdf(data = data_summarized,
+            aes(lense),
+            color = "#66CA5C",
+            linewidth = 0.95,
+            alpha = 0.7,
+            pad = FALSE) +
+  coord_cartesian(xlim = c(-0.5, 1.0)) +
+  labs(title    = "Behavioral comparison",
+       subtitle = "LSTM ensemble evaluated over 531 basins",
+       x        = "NSE/LENSE",
+       y        = "eCDF") +
+  annotate("text",
+           x = -0.22,
+           y = 0.47,
+           label = "LENSE",
+           size = 3,
+           family = "serif",
+           color = "#66CA5C",
+           alpha = 0.7) +
+  geom_curve(aes(x = -0.22, y = 0.42, xend = -0.09, yend = 0.13),
+             arrow = arrow(length = unit(0.03, "npc")),
+             curvature = 0.2,
+             color = "#66CA5C",
+             alpha = 0.7) +
+  annotate("text",
+           x = 0.1,
+           y = 0.37,
+           label = "NSE",
+           size = 3,
+           family = "serif",
+           alpha = 0.7) +
+  geom_curve(aes(x = 0.1, y = 0.31, xend = 0.22, yend = 0.04),
+             arrow = arrow(length = unit(0.03, "npc")),
+             curvature = 0.22,
+             alpha = 0.7) +
+  theme_tufte(base_size = 9) +
+  theme(panel.grid = element_line(colour = "grey95"),
+          legend.key.size = unit(0.5,"line"))
+
+ggsave(performance_plot, filename = "./outputs/lense-performance.pdf",
+       height = 6,
+       width = 8.3,
+       units = "cm")
+```
+
+## Analysis 2
+```{r}
+lense_data %>%
+  dplyr::filter(model == model_of_interest) %>%
+  dplyr::mutate(period = paste(period_start, "to", period_end)) %>%
+  dplyr::group_by(period) %>%
+  dplyr::summarise(LENSE = mean(lense), NSE = mean(nse)) %>%
+  dplyr::ungroup() %>%
+  tidyr::gather("metric", "value", -period) ->
+    data_summarized
+
+data_subperiod = dplyr::filter(data_summarized, period != '1989-10-01 to 1999-09-30')
+data_allperiod = dplyr::filter(data_summarized, period == '1989-10-01 to 1999-09-30')
+differences <- dplyr::filter(data_subperiod, metric == 'LENSE')$value - dplyr::filter(data_subperiod, metric == 'NSE')$value
+data_subperiod$difference <- rep(differences, 2)
+
+comparison_plot <- ggplot() +
+  geom_point(data = data_subperiod,
+             aes(x = metric, y = value, group = period, color = difference),
+             alpha = 0.7,
+             show.legend = FALSE) +
+  geom_line(data = data_subperiod,
+            aes(x = metric, y = value, group = period, color = difference),
+            alpha = 0.7,
+            show.legend = FALSE) +
+  geom_point(data = data_allperiod, aes( x= metric, y = value),
+             shape = 3,
+             color = "red",
+             size = 3) +
+  geom_line(data = data_allperiod, aes(x = metric, y = value, group = period),
+            color = "red",
+            linetype = "dashed",
+            size = 0.5) +
+  scale_color_viridis_c(direction = 1) +
+  coord_cartesian(ylim = c(-0.5, 1.0)) +
+  labs(title    = "Exemplary evaluation",
+       subtitle = "Yearly performance evalauted for single basin",
+       x        = "performance criterion",
+       y        = "value") +
+  annotate("text",
+           x = 2.3,
+           y = 0.93,
+           label = "overall NSE",
+           size = 3,
+           family = "serif",
+           color = "red") +
+  geom_curve(aes(x = 2.3, y = 0.84, xend = 2.08, yend = 0.73),
+             color = "red",
+             arrow = arrow(length = unit(0.03, "npc")),
+             curvature = -0.15) +
+  annotate("text",
+           x = 0.8,
+           y = -0.26,
+           label = "overall\nLENSE",
+           size = 3,
+           family = "serif",
+           color = "red") +
+  geom_curve(aes(x = 0.77, y = -0.1, xend = 0.92, yend = 0.28),
+             color = "red",
+             arrow = arrow(length = unit(0.03, "npc")),
+             curvature = -0.25) +
+  annotate("text",
+           x = 1.4,
+           y = 0.91,
+           label = "individual years",
+           size = 3,
+           family = "serif",
+           color = "#440154FF",
+           alpha = 0.7) +
+  geom_curve(aes(x = 1.4, y = 0.81, xend = 1.45, yend = 0.66),
+             arrow = arrow(length = unit(0.03, "npc")),
+             curvature = 0.1,
+             color = "#440154FF",
+             alpha = 0.7) +
+  theme_tufte(base_size = 9) +
+  theme(panel.grid = element_line(colour = "grey95"),
+        legend.key.size = unit(0.5,"line"))
+
+ggsave(comparison_plot, filename = "./outputs/lense-basin.pdf",
+       height = 6,
+       width = 8.3,
+       units = "cm")
+```
+
+## Analysis for Appendix
+Plot cdfs for other models:
+```{r}
+models <- c("SAC_SMA", "VIC_conus", "HBV_lb")
+
+for (model_of_interest in models) {
+  lense_data %>%
+    dplyr::filter(model == model_of_interest,
+                  period_start == "1989-10-01",
+                  period_end == "1999-09-30") ->
+    data_summarized
+
+  performance_plot <- ggplot() +
+    stat_ecdf(data = data_summarized,
+              aes(nse),
+              linetype = "dotted",
+              pad = FALSE) +
+    stat_ecdf(data = data_summarized,
+              aes(lense),
+              color = "#66CA5C",
+              linewidth = 0.95,
+              alpha = 0.7,
+              pad = FALSE) +
+    coord_cartesian(xlim = c(-0.5, 1.0)) +
+    labs(title = "Behavioral comparison:" %&&% gsub("_.*","",model_of_interest),
+         subtitle = "LSTM ensemble evaluated over 531 basins",
+         x = "NSE/LENSE",
+         y = "eCDF") +
+    theme_tufte(base_size = 9) +
+    theme(panel.grid = element_line(colour = "grey95"),
+          legend.key.size = unit(0.5,"line"))
+  
+  ggsave(performance_plot,
+         filename = "./outputs/lense-performance" %-% model_of_interest %.%"pdf",
+         height = 6,
+         width = 8.3,
+         units = "cm")
+}
+```
+

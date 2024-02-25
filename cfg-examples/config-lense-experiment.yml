@@ -1,0 +1,7 @@
+data_dir: /path/to/camels/data/
+ref_model_dir: /path/to/directory/that/contains/a/netcdf/with/all/model/runs/
+output: /path/for/saving/output/
+
+window_size: 11               # 11 was used in the paper
+window_point_of_interest: 11  # 11 was used in paper; tells which timestep within the window is of interest
+model_id: "lstm_ensemble"     # "lstm_ensemble" was used in the paper
